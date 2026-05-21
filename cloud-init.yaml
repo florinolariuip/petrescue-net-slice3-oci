@@ -1,0 +1,85 @@
+#cloud-config
+# cloud-init.yaml — runs once on first boot of the VM.
+#
+# Installs everything needed to host PetRescue.Api + the CodeCarbon sidecar:
+# .NET 10 ARM64 runtime, Docker, Python venv, PostgreSQL client, plus the
+# iptables fix for OCI Ubuntu's restrictive default firewall.
+#
+# Progress is logged to /var/log/cloud-init-output.log on the VM.
+
+package_update: true
+package_upgrade: false   # skip the dist-upgrade, it costs 5+ minutes
+
+packages:
+  - curl
+  - wget
+  - unzip
+  - git
+  - python3
+  - python3-pip
+  - python3-venv
+  - postgresql-client
+  - htop
+  - iotop
+  - netfilter-persistent
+  - iptables-persistent
+
+write_files:
+  # A helper script that installs the .NET 10 ASP.NET Core runtime.
+  # Microsoft's install script auto-detects ARM64.
+  - path: /usr/local/bin/install-dotnet10.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+      wget -q https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh
+      chmod +x /tmp/dotnet-install.sh
+      /tmp/dotnet-install.sh --channel 10.0 --runtime aspnetcore \
+          --install-dir /usr/share/dotnet
+      ln -sf /usr/share/dotnet/dotnet /usr/local/bin/dotnet
+      dotnet --info | head -20
+
+runcmd:
+  # ---------------------------------------------------------------------
+  # Step 1: Fix iptables.
+  #
+  # OCI Ubuntu ships with a restrictive INPUT chain that drops everything
+  # except port 22. Even with the OCI security list open, traffic is
+  # blocked by iptables. We insert ACCEPT rules near the top of INPUT
+  # for the ports we need, then persist with netfilter-persistent.
+  #
+  # Public ports:  8080 (gateway / monolith), 5055 (CodeCarbon sidecar)
+  # Internal ports: 5101-5103 (Animals/Medical/Adopters APIs — loopback
+  #   only, but the OCI INPUT chain also blocks loopback by default on
+  #   some kernel versions, so we add explicit ACCEPT rules to be safe).
+  # ---------------------------------------------------------------------
+  - [ sh, -c, "iptables -I INPUT 5 -p tcp --dport 8080 -j ACCEPT" ]
+  - [ sh, -c, "iptables -I INPUT 6 -p tcp --dport 5055 -j ACCEPT" ]
+  - [ sh, -c, "iptables -I INPUT 7 -p tcp --dport 5101 -j ACCEPT" ]
+  - [ sh, -c, "iptables -I INPUT 8 -p tcp --dport 5102 -j ACCEPT" ]
+  - [ sh, -c, "iptables -I INPUT 9 -p tcp --dport 5103 -j ACCEPT" ]
+  - [ sh, -c, "netfilter-persistent save" ]
+
+  # ---------------------------------------------------------------------
+  # Step 2: Install Docker.
+  # ---------------------------------------------------------------------
+  - [ sh, -c, "curl -fsSL https://get.docker.com | sh" ]
+  - [ systemctl, enable, --now, docker ]
+  - [ usermod, -aG, docker, ubuntu ]
+
+  # ---------------------------------------------------------------------
+  # Step 3: Install .NET 10 ARM64 ASP.NET Core runtime.
+  # ---------------------------------------------------------------------
+  - [ sh, -c, "/usr/local/bin/install-dotnet10.sh > /var/log/dotnet-install.log 2>&1" ]
+
+  # ---------------------------------------------------------------------
+  # Step 4: Announce completion in the cloud-init log.
+  # ---------------------------------------------------------------------
+  - [ sh, -c, "echo '==========================================' >> /var/log/cloud-init-output.log" ]
+  - [ sh, -c, "echo 'PetRescue bootstrap complete.' >> /var/log/cloud-init-output.log" ]
+  - [ sh, -c, "echo '==========================================' >> /var/log/cloud-init-output.log" ]
+  - [ sh, -c, "echo '' >> /var/log/cloud-init-output.log" ]
+  - [ sh, -c, "echo 'Verify:' >> /var/log/cloud-init-output.log" ]
+  - [ sh, -c, "dotnet --info | head -5 >> /var/log/cloud-init-output.log" ]
+  - [ sh, -c, "docker --version >> /var/log/cloud-init-output.log" ]
+  - [ sh, -c, "python3 --version >> /var/log/cloud-init-output.log" ]

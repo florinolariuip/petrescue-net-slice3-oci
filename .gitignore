@@ -1,0 +1,12 @@
+# Never commit:
+terraform.tfvars        # contains tenancy OCID and SSH public key
+*.tfstate               # contains everything including sensitive info
+*.tfstate.backup
+.terraform/             # provider binaries
+.terraform.lock.hcl     # commit this if you want to lock provider versions — currently uncommitted for flexibility
+
+# Credentials — never commit
+.env
+
+# OS noise
+.DS_Store

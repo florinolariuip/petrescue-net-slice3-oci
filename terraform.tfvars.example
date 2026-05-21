@@ -1,0 +1,37 @@
+# terraform.tfvars.example
+#
+# Copy this file to `terraform.tfvars` and fill in your real values.
+# `terraform.tfvars` is gitignored — never commit it; it contains your tenancy OCID
+# and your SSH public key.
+
+# ---------- REQUIRED ----------
+
+# Get from: OCI Console > Profile menu > Tenancy
+tenancy_ocid = "ocid1.tenancy.oc1..aaaaaaaaREPLACE_ME"
+
+# Your home region. Common choices:
+#   eu-frankfurt-1   (Germany)
+#   uk-london-1      (UK)
+#   eu-amsterdam-1   (Netherlands)
+#   us-ashburn-1     (US East)
+region = "eu-frankfurt-1"
+
+# Paste the CONTENTS of your SSH public key file (the .pub one).
+# Run on your Mac:  cat ~/.ssh/petrescue_oci.pub
+# Then paste the whole line between the quotes.
+ssh_public_key = "ssh-rsa AAAAB3Nz... your-key-here ssh-key-2026-05-17"
+
+# ---------- OPTIONAL (defaults shown) ----------
+
+# instance_name        = "petrescue-cloud"
+# instance_ocpus       = 2          # 1-4, total free quota is 4 across all instances
+# instance_memory_gb   = 12         # 6-24, total free quota is 24
+# boot_volume_size_gb  = 50         # 47 minimum, 200 across all instances
+
+# Lock SSH down to your IP for production. Find your IP with:
+#   curl -s ifconfig.me
+# Then: allowed_ssh_cidr = "1.2.3.4/32"
+# allowed_ssh_cidr = "0.0.0.0/0"
+
+# Same for the API/sidecar ports. Restricting to your IP is safer.
+# allowed_http_cidr = "0.0.0.0/0"
