@@ -129,10 +129,3 @@ terraform destroy
 
 This removes everything: the VM, the VCN, the security list, the route table, the IGW. Total cleanup takes ~1 minute. Always Free resources don't bill, but destroying is good hygiene and frees Ampere A1 capacity for your next provision.
 
-## For the paper
-
-Cite this Terraform module as the reproducibility artifact. The methodology section can say:
-
-> *"The cloud configuration was provisioned via Terraform on Oracle Cloud Infrastructure, region X, using the Always Free Ampere A1.Flex shape with 2 OCPUs and 12 GB of RAM, running Ubuntu 22.04 ARM64 with .NET 10 ASP.NET Core runtime. Full provisioning code is available at [github URL]."*
-
-That's all reviewers need.
